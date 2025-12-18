@@ -50,13 +50,14 @@ const Layout = () => {
                 {/* Header / Logo Area */}
                 <div className="p-6 border-b border-gray-800 flex flex-col justify-center h-24">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center shrink-0">
-                            <span className="font-bold text-white">S</span>
-                        </div>
+                        <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
                         {isSidebarOpen && (
                             <div className="flex flex-col overflow-hidden">
                                 <h1 className="font-bold text-lg leading-tight whitespace-nowrap">선승구전(先勝求戰)</h1>
-                                <span className="text-[10px] text-gray-400 whitespace-nowrap">Winning Before Fighting</span>
+                                <div className="flex flex-col mt-0.5">
+                                    <span className="text-[10px] text-gray-400 whitespace-nowrap leading-tight">EiE Self-Consulting Program</span>
+                                    <span className="text-[10px] text-gray-400 whitespace-nowrap leading-tight">Winning Before Fighting</span>
+                                </div>
                             </div>
                         )}
                     </div>
