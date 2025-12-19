@@ -48,15 +48,15 @@ const Layout = () => {
                 </button>
 
                 {/* Header / Logo Area */}
-                <div className="p-6 border-b border-gray-800 flex flex-col justify-center h-24">
+                <div className="px-3 py-6 border-b border-gray-800 flex flex-col justify-center min-h-[120px]">
                     <div className="flex items-center gap-3">
-                        <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+                        <img src="/logo.png" alt="Logo" className="w-12 h-12 object-contain" />
                         {isSidebarOpen && (
                             <div className="flex flex-col overflow-hidden">
-                                <h1 className="font-bold text-lg leading-tight whitespace-nowrap">선승구전(先勝求戰)</h1>
-                                <div className="flex flex-col mt-0.5">
-                                    <span className="text-[10px] text-gray-400 whitespace-nowrap leading-tight">EiE Self-Consulting Program</span>
-                                    <span className="text-[10px] text-gray-400 whitespace-nowrap leading-tight">Winning Before Fighting</span>
+                                <h1 className="font-bold text-xl leading-tight whitespace-nowrap mb-1">선승구전(先勝求戰)</h1>
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-gray-400 whitespace-nowrap leading-tight">EiE Self-Consulting Program</span>
+                                    <span className="text-xs text-gray-400 whitespace-nowrap leading-tight">Winning Before Fighting</span>
                                 </div>
                             </div>
                         )}
