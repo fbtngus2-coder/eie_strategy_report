@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Calendar, Wallet, CheckCircle2, AlertTriangle, Save, GraduationCap, Users, Building, Activity, Megaphone, Search, School, MapPin } from 'lucide-react';
+import { Calendar, Wallet, CheckCircle2, AlertTriangle, Save, GraduationCap, Users, Building, Activity, Megaphone, Search, School, MapPin, Settings, Sparkles, Bot, Loader2 } from 'lucide-react';
 import ManagementDiagnosis from '../components/strategy/ManagementDiagnosis';
 import SwotAnalysis from '../components/strategy/SwotAnalysis';
 import ThreeCAnalysis from '../components/strategy/ThreeCAnalysis';
@@ -9,6 +9,8 @@ import StpStrategy from '../components/strategy/StpStrategy';
 import MixStrategy from '../components/strategy/MixStrategy';
 import { searchSchoolByName, getSchoolSchedule, extractKeyEvents } from '../lib/neisService';
 import { getSchoolDetailedStats } from '../lib/schoolAlimiService';
+import AiSettingsModal from '../components/AiSettingsModal';
+import { generateMarketingStrategy, generateBudgetFeedback, generateTotalReview } from '../lib/aiService';
 
 const SchoolAnalysisSection = ({ inputData, onSchoolSelect }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -195,6 +197,16 @@ const StrategyPage = () => {
     const [marketingData, setMarketingData] = useState([]);
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
     const [saving, setSaving] = useState(false);
+
+    // AI Integration States
+    const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key'));
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [aiMarketingData, setAiMarketingData] = useState(null);
+    const [aiMarketingLoading, setAiMarketingLoading] = useState(false);
+    const [aiBudgetFeedback, setAiBudgetFeedback] = useState(null);
+    const [aiBudgetLoading, setAiBudgetLoading] = useState(false);
+    const [aiTotalReview, setAiTotalReview] = useState(null);
+    const [aiTotalLoading, setAiTotalLoading] = useState(false);
     const [schoolLocation, setSchoolLocation] = useState(null);
 
     const handleSchoolSelect = (school) => {
@@ -260,6 +272,104 @@ const StrategyPage = () => {
     useEffect(() => {
         fetchData();
     }, [sessionId]);
+
+    // Auto-run AI Total Review when data loads if API key exists
+    useEffect(() => {
+        if (data && apiKey && !aiTotalReview) {
+            runAiTotalReview();
+        }
+    }, [data, apiKey]);
+
+    // AI Analysis Functions
+    const runAiMarketingAnalysis = async () => {
+        if (!apiKey) {
+            alert('AI 기능을 사용하려면 먼저 Gemini API 키를 설정해주세요.');
+            setIsSettingsOpen(true);
+            return;
+        }
+        setAiMarketingLoading(true);
+        try {
+            const location = data?.environment_analysis?.location || '지역정보 없음';
+            const parentsType = data?.environment_analysis?.parentsType || '학부모 유형 정보 없음';
+            const result = await generateMarketingStrategy(apiKey, currentMonth, location, parentsType);
+            setAiMarketingData(result);
+        } catch (err) {
+            console.error('AI Marketing Error:', err);
+            alert('AI 마케팅 전략 생성에 실패했습니다: ' + err.message);
+        } finally {
+            setAiMarketingLoading(false);
+        }
+    };
+
+    const runAiBudgetAnalysis = async () => {
+        if (!apiKey) {
+            alert('AI 기능을 사용하려면 먼저 Gemini API 키를 설정해주세요.');
+            setIsSettingsOpen(true);
+            return;
+        }
+        setAiBudgetLoading(true);
+        try {
+            const budgetData = {
+                flyerCount: simCalcs.flyerCount,
+                manpowerCount: simCalcs.manpowerCount,
+                manpowerHours: simCalcs.manpowerHours,
+                aptBoardCost: simCalcs.aptBoardCost,
+                giftCount: simCalcs.giftCount,
+                tuitionFee: simCalcs.tuitionFee
+            };
+            const result = await generateBudgetFeedback(apiKey, budgetData, {});
+            setAiBudgetFeedback(result);
+        } catch (err) {
+            console.error('AI Budget Error:', err);
+            alert('AI 예산 분석 생성에 실패했습니다: ' + err.message);
+        } finally {
+            setAiBudgetLoading(false);
+        }
+    };
+
+    const runAiTotalReview = async () => {
+        if (!apiKey) return;
+        setAiTotalLoading(true);
+        try {
+            const { student_info, instructor_info, tuition_info, competitors, our_analysis, environment_analysis, facility_info } = data;
+            const totalStudents = student_info.total || ((student_info.kinder || 0) + (student_info.elem_low || 0) + (student_info.elem_high || 0) + (student_info.middle || 0));
+            const rooms = facility_info?.classrooms || 0;
+            const capacityPerRoom = facility_info?.maxCapacityPerRoom || 10;
+            const totalCapacity = rooms * capacityPerRoom;
+            const utilizationRate = totalCapacity > 0 ? (totalStudents / totalCapacity) * 100 : 0;
+            const instructors = instructor_info?.total || 1;
+            const ratio = totalStudents / instructors;
+            const myFee = parseInt(String(tuition_info?.elementary || 0).replace(/[^0-9]/g, '')) || 0;
+            let compFeeRaw = competitors?.[0]?.fee || '0';
+            let compFee = parseInt(String(compFeeRaw).replace(/[^0-9]/g, ''));
+            if (compFee < 1000) compFee = compFee * 10000;
+            let priceStat = '적정';
+            if (myFee > compFee * 1.1) priceStat = '고가(Premium)';
+            else if (myFee < compFee * 0.9) priceStat = '저가(Value)';
+
+            const metrics = { utilizationRate: utilizationRate.toFixed(1), ratio: ratio.toFixed(1), priceStat };
+            const narrativeContext = {
+                target: environment_analysis?.target_student || '초등 저학년',
+                competitorName: competitors?.[0]?.name || '경쟁 학원',
+                competitorStrength: competitors?.[0]?.strength || '강점 정보 없음'
+            };
+            const result = await generateTotalReview(apiKey, metrics, narrativeContext);
+            setAiTotalReview(result);
+        } catch (err) {
+            console.error('AI Total Review Error:', err);
+        } finally {
+            setAiTotalLoading(false);
+        }
+    };
+
+    const handleSettingsSave = (newKey) => {
+        setApiKey(newKey);
+        setIsSettingsOpen(false);
+        // Reset AI states to trigger re-generation
+        setAiTotalReview(null);
+        setAiMarketingData(null);
+        setAiBudgetFeedback(null);
+    };
 
     const fetchData = async () => {
         if (!sessionId) return;
@@ -384,7 +494,21 @@ const StrategyPage = () => {
                     <h1 className="text-3xl font-bold text-gray-900">종합 경영/마케팅 전략 리포트</h1>
                     <p className="text-gray-500 mt-1">#{data.environment_analysis.location} #{data.environment_analysis.parentsType} 맞춤 전략</p>
                 </div>
+                <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+                >
+                    <Settings size={18} />
+                    {apiKey ? 'AI 설정 변경' : 'AI 기능 활성화'}
+                </button>
             </div>
+
+            {/* AI Settings Modal */}
+            <AiSettingsModal
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                onSave={handleSettingsSave}
+            />
 
             <div className="hidden print:block text-center border-b pb-4 mb-4">
                 <h1 className="text-3xl font-bold text-red-600">EiE Self-Consulting Program 전략 리포트</h1>
@@ -403,7 +527,7 @@ const StrategyPage = () => {
                         ourAnalysis={data.our_analysis}
                         tuitionInfo={data.tuition_info}
                     />
-                    <SwotAnalysis ourAnalysis={data.our_analysis} competitors={data.competitors} />
+                    <SwotAnalysis ourAnalysis={data.our_analysis} competitors={data.competitors} apiKey={apiKey} />
                     <StpStrategy
                         studentInfo={data.student_info}
                         parentsType={data.environment_analysis?.parentsType}
@@ -636,7 +760,7 @@ const StrategyPage = () => {
                         else if (myFee < compFee * 0.9) priceStat = "저가(Value)";
 
                         // 4. Branding & Product (Requested by User)
-                        const brandMsg = "EiE 고려대학교 국제어학원 프로그램은 단순한 프랜차이즈가 아닙니다. 학부모들에게 '대학이 만든 검증된 교육'이라는 강력한 신뢰 자산(Brand Trust)을 전달합니다. 이를 통해 신생 학원이나 개인 교습소가 줄 수 없는 '교육의 권위'를 마케팅 핵심 포인트로 삼아야 합니다.";
+                        const brandMsg = "EiE 고려대학교 영어교육 프로그램은 단순한 프랜차이즈가 아닙니다. 학부모들에게 '대학이 만든 검증된 교육'이라는 강력한 신뢰 자산(Brand Trust)을 전달합니다. 이를 통해 신생 학원이나 개인 교습소가 줄 수 없는 '교육의 권위'를 마케팅 핵심 포인트로 삼아야 합니다.";
 
                         return (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">

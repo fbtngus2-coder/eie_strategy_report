@@ -58,9 +58,13 @@ export const extractKeyEvents = (scheduleList) => {
     const keyKeywords = ['졸업', '방학', '입학', '소집', '개학', '종업'];
 
     // 1. Filter
-    const filtered = scheduleList.filter(event =>
-        keyKeywords.some(keyword => event.EVENT_NM.includes(keyword))
-    );
+    const filtered = scheduleList.filter(event => {
+        const eventDate = new Date(event.AA_YMD.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'));
+        const today = new Date();
+        const dDay = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+        // Keep events that match keyword AND are in future (dDay >= 0)
+        return keyKeywords.some(keyword => event.EVENT_NM.includes(keyword)) && dDay >= 0;
+    });
 
     // 2. Map
     const mapped = filtered.map(event => ({
