@@ -174,3 +174,59 @@ export const generateTotalReview = async (apiKey, metrics, narrativeContext) => 
         throw error;
     }
 };
+
+export const generateStpStrategy = async (apiKey, ourAnalysis, competitors, studentInfo, parentsType, targetAudience) => {
+    try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+        const prompt = `
+        Act as a Branding & Strategy Consultant for an English Academy in Korea from the perspective of "EiE 고려대학교 영어교육 프로그램".
+        
+        [Academy Context]
+        - My Strengths: ${JSON.stringify(ourAnalysis?.strength || [])}
+        - My Weaknesses: ${JSON.stringify(ourAnalysis?.weakness || [])}
+        - Current Students: ${JSON.stringify(studentInfo)}
+        - Target Audience: ${targetAudience || 'General'}
+        - Parents Type: ${parentsType || 'General'}
+        
+        [Market Context]
+        - Competitors: ${JSON.stringify(competitors?.map(c => c.name) || [])}
+        
+        Task: Create a sharp, high-impact STP Strategy.
+        
+        Output Requirements:
+        - Language: Korean (Professional, Persuasive)
+        - Format: 3 Distinct Sections with headers.
+        
+        1. [SEGMENTATION] (세분화)
+           - Identify the most profitable and strategically important segment based on current students and strengths.
+           - Explain WHY this segment is the "Blue Ocean" or "Core Growth Engine".
+           - Length: 2-3 sentences.
+        
+        2. [TARGETING] (타겟 선정)
+           - Define the specific Persona of the target parent/student (e.g., "Grades-obsessed partial to management", "Young parents valuing speaking").
+           - Propose a specific marketing approach for them (e.g., "Seminars", "WOM", "Online Ads").
+           - Length: 2-3 sentences.
+        
+        3. [POSITIONING] (포지셔닝)
+           - Create a ONE-LINE Powerful Slogan/Identity.
+           - Explain the core differentiator that supports this positioning.
+           - Length: Slogan + 1 sentence explanation.
+           
+        Please use the following markers for easy parsing:
+        ### SEGMENTATION
+        ...content...
+        ### TARGETING
+        ...content...
+        ### POSITIONING
+        ...content...
+        `;
+
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+    } catch (error) {
+        console.error("STP AI Error:", error);
+        throw error;
+    }
+};

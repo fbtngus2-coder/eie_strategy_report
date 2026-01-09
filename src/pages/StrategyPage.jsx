@@ -532,6 +532,9 @@ const StrategyPage = () => {
                         studentInfo={data.student_info}
                         parentsType={data.environment_analysis?.parentsType}
                         targetAudience={data.environment_analysis?.target_student}
+                        ourAnalysis={data.our_analysis}
+                        competitors={data.competitors}
+                        apiKey={apiKey}
                     />
                     <MixStrategy
                         facilityInfo={data.facility_info}
