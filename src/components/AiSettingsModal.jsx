@@ -9,7 +9,7 @@ const AiSettingsModal = ({ isOpen, onClose, onSave }) => {
 
     useEffect(() => {
         if (isOpen) {
-            const savedKey = localStorage.getItem('gemini_api_key');
+            const savedKey = localStorage.getItem('openai_api_key');
             if (savedKey) setApiKey(savedKey);
             setStatus('idle');
             setStatusMsg('');
@@ -29,7 +29,7 @@ const AiSettingsModal = ({ isOpen, onClose, onSave }) => {
         if (isValid) {
             setStatus('success');
             setStatusMsg('연동 성공! 키가 안전하게 저장되었습니다.');
-            localStorage.setItem('gemini_api_key', apiKey);
+            localStorage.setItem('openai_api_key', apiKey);
             setTimeout(() => {
                 onSave(apiKey);
                 onClose();
@@ -41,7 +41,7 @@ const AiSettingsModal = ({ isOpen, onClose, onSave }) => {
     };
 
     const handleClear = () => {
-        localStorage.removeItem('gemini_api_key');
+        localStorage.removeItem('openai_api_key');
         setApiKey('');
         setStatus('idle');
         setStatusMsg('저장된 키가 삭제되었습니다.');
@@ -66,13 +66,13 @@ const AiSettingsModal = ({ isOpen, onClose, onSave }) => {
                 <div className="space-y-4">
                     <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                         <p className="text-indigo-900 text-sm leading-relaxed font-medium">
-                            Google Gemini Pro의 강력한 인공지능을 연동합니다.<br />
+                            OpenAI GPT-4o의 강력한 인공지능을 연동합니다.<br />
                             입력하신 키는 브라우저에만 저장되며 서버로 전송되지 않습니다.
                         </p>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Google API Key</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">OpenAI API Key</label>
                         <div className="relative">
                             <Key className="absolute left-3 top-3 text-gray-400" size={18} />
                             <input
@@ -90,14 +90,14 @@ const AiSettingsModal = ({ isOpen, onClose, onSave }) => {
 
                     <div className="flex items-center justify-between text-xs text-gray-500">
                         <a
-                            href="https://aistudio.google.com/app/apikey"
+                            href="https://platform.openai.com/api-keys"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1 hover:text-indigo-600 underline"
                         >
-                            <ExternalLink size={12} /> API Key 발급받기 (무료)
+                            <ExternalLink size={12} /> API Key 발급받기
                         </a>
-                        {localStorage.getItem('gemini_api_key') && (
+                        {localStorage.getItem('openai_api_key') && (
                             <button onClick={handleClear} className="text-red-500 hover:underline">
                                 저장된 키 삭제
                             </button>

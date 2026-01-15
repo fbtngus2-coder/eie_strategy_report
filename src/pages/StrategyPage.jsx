@@ -199,7 +199,7 @@ const StrategyPage = () => {
     const [saving, setSaving] = useState(false);
 
     // AI Integration States
-    const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key'));
+    const [apiKey, setApiKey] = useState(localStorage.getItem('openai_api_key'));
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [aiMarketingData, setAiMarketingData] = useState(null);
     const [aiMarketingLoading, setAiMarketingLoading] = useState(false);

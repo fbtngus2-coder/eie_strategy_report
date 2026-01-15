@@ -1,18 +1,22 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
-const getGenAI = (apiKey) => {
+const getOpenAI = (apiKey) => {
     if (!apiKey) throw new Error("API Key is missing");
-    return new GoogleGenerativeAI(apiKey);
+    return new OpenAI({ 
+        apiKey,
+        dangerouslyAllowBrowser: true // For client-side usage
+    });
 };
 
 export const testApiKey = async (apiKey) => {
     try {
-        const genAI = getGenAI(apiKey);
-        // Use stable model for API key validation
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const result = await model.generateContent("Hello, are you working?");
-        const response = await result.response;
-        return response.text().length > 0;
+        const openai = getOpenAI(apiKey);
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: "Hello" }],
+            max_tokens: 10
+        });
+        return response.choices[0].message.content.length > 0;
     } catch (error) {
         console.error("API Key Validation Error:", error);
         return false;
@@ -21,8 +25,7 @@ export const testApiKey = async (apiKey) => {
 
 export const generateSwotAnalysis = async (apiKey, ourAnalysis, competitors) => {
     try {
-        const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        const openai = getOpenAI(apiKey);
 
         const prompt = `
         Role: You are an expert educational consultant for private academies (Hagwon) in Korea.
@@ -52,8 +55,14 @@ export const generateSwotAnalysis = async (apiKey, ourAnalysis, competitors) => 
         - Use specific examples (e.g., "Host a seminar on [Topic]" not "improve marketing")
         `;
 
-        const result = await model.generateContent(prompt);
-        return result.response.text();
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 1500
+        });
+
+        return response.choices[0].message.content;
     } catch (error) {
         console.error("SWOT Generation Error:", error);
         throw error;
@@ -62,8 +71,7 @@ export const generateSwotAnalysis = async (apiKey, ourAnalysis, competitors) => 
 
 export const generateMarketingStrategy = async (apiKey, month, location, parentsType) => {
     try {
-        const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        const openai = getOpenAI(apiKey);
 
         const prompt = `
         Role: Senior Marketing Director for English Education.
@@ -88,22 +96,30 @@ export const generateMarketingStrategy = async (apiKey, month, location, parents
         ONLY return valid JSON array, nothing else.
         `;
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        // Simple cleanup to ensure JSON parsing if AI adds backticks
-        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(jsonStr);
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 500,
+            response_format: { type: "json_object" }
+        });
+
+        const text = response.choices[0].message.content;
+        // Parse the response - OpenAI might wrap it
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        return JSON.parse(text);
     } catch (error) {
         console.error("Marketing Generation Error:", error);
-        // Fallback or rethrow
         throw error;
     }
 };
 
 export const generateBudgetFeedback = async (apiKey, budgetData, financialGoals) => {
     try {
-        const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        const openai = getOpenAI(apiKey);
 
         const prompt = `
         Role: Financial Advisor for Small Businesses.
@@ -127,8 +143,14 @@ export const generateBudgetFeedback = async (apiKey, budgetData, financialGoals)
            3. One actionable tip (e.g., "Y 항목을 Z원으로 조정 권장")
         `;
 
-        const result = await model.generateContent(prompt);
-        return result.response.text();
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 300
+        });
+
+        return response.choices[0].message.content;
     } catch (error) {
         console.error("Budget Feedback Error:", error);
         throw error;
@@ -137,8 +159,7 @@ export const generateBudgetFeedback = async (apiKey, budgetData, financialGoals)
 
 export const generateTotalReview = async (apiKey, metrics, narrativeContext) => {
     try {
-        const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        const openai = getOpenAI(apiKey);
 
         const prompt = `
         Role: Chief Strategy Officer.
@@ -168,8 +189,14 @@ export const generateTotalReview = async (apiKey, metrics, narrativeContext) => 
         Keep it under 200 characters total.
         `;
 
-        const result = await model.generateContent(prompt);
-        return result.response.text();
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 500
+        });
+
+        return response.choices[0].message.content;
     } catch (error) {
         console.error("Total Review Error:", error);
         throw error;
@@ -178,8 +205,7 @@ export const generateTotalReview = async (apiKey, metrics, narrativeContext) => 
 
 export const generateStpStrategy = async (apiKey, ourAnalysis, competitors, studentInfo, parentsType, targetAudience) => {
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        const openai = getOpenAI(apiKey);
 
         const prompt = `
         Act as a Branding & Strategy Consultant for an English Academy in Korea from the perspective of "EiE 고려대학교 영어교육 프로그램".
@@ -224,8 +250,14 @@ export const generateStpStrategy = async (apiKey, ourAnalysis, competitors, stud
         ...content...
         `;
 
-        const result = await model.generateContent(prompt);
-        return result.response.text();
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 1000
+        });
+
+        return response.choices[0].message.content;
     } catch (error) {
         console.error("STP AI Error:", error);
         throw error;
