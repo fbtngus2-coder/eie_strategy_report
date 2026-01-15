@@ -8,7 +8,8 @@ const getGenAI = (apiKey) => {
 export const testApiKey = async (apiKey) => {
     try {
         const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        // Use stable model for API key validation
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await model.generateContent("Hello, are you working?");
         const response = await result.response;
         return response.text().length > 0;
