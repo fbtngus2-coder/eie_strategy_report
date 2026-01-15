@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Shield, Zap, TrendingUp, Sparkles, Bot, Loader2, AlertTriangle } from 'lucide-react';
+import { Target, Shield, Zap, TrendingUp, Sparkles, Bot, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { generateSwotAnalysis } from '../../lib/aiService';
 
-const SwotAnalysis = ({ ourAnalysis, competitors, apiKey }) => {
+const SwotAnalysis = ({ ourAnalysis, competitors, aiTrigger }) => {
+    // Note: apiKey prop is no longer needed as it is handled internally in aiService
 
     // AI State
     const [aiAnalysis, setAiAnalysis] = useState(null);
@@ -38,24 +39,17 @@ const SwotAnalysis = ({ ourAnalysis, competitors, apiKey }) => {
         setSwotData(generateSwot());
     }, [ourAnalysis, competitors]);
 
-    // AI Analysis Effect
+    // Handler for Global AI Trigger
     useEffect(() => {
-        if (apiKey && ourAnalysis) {
+        if (aiTrigger > 0 && ourAnalysis) {
             setLoading(true);
             setError(null);
-            generateSwotAnalysis(apiKey, ourAnalysis, competitors)
-                .then(text => {
-                    setAiAnalysis(text);
-                })
-                .catch(err => {
-                    console.error('SWOT AI Error:', err);
-                    setError(err.message);
-                })
-                .finally(() => {
-                    setLoading(false);
-                });
+            generateSwotAnalysis(null, ourAnalysis, competitors)
+                .then(text => setAiAnalysis(text))
+                .catch(err => setError(err.message || "AI 분석 중 오류가 발생했습니다."))
+                .finally(() => setLoading(false));
         }
-    }, [apiKey, ourAnalysis, competitors]);
+    }, [aiTrigger, ourAnalysis, competitors]);
 
     const renderCard = (title, items, color, icon) => (
         <div className={`p-6 rounded-2xl border-2 h-full ${color}`}>
@@ -81,7 +75,7 @@ const SwotAnalysis = ({ ourAnalysis, competitors, apiKey }) => {
             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <Target className="text-red-600" />
                 SWOT 전략 분석
-                {apiKey && <span className="ml-auto flex items-center gap-1 text-sm font-normal text-purple-600 bg-purple-50 px-3 py-1 rounded-full"><Bot size={16} /> AI Enhanced</span>}
+                {aiAnalysis && <span className="ml-auto flex items-center gap-1 text-sm font-normal text-purple-600 bg-purple-50 px-3 py-1 rounded-full"><Bot size={16} /> AI Enhanced</span>}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {renderCard('Strength (강점)', swotData.s, 'border-blue-100 bg-blue-50/50 text-blue-900', <Zap size={18} className="text-blue-600" />)}
@@ -91,25 +85,30 @@ const SwotAnalysis = ({ ourAnalysis, competitors, apiKey }) => {
             </div>
 
             <div className="mt-8">
-                <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    {apiKey ? <Bot className="text-purple-600" size={20} /> : <span>💡</span>}
-                    {apiKey ? 'AI 기반 필승 전략 분석' : '필승 전략 제안 (SO 전략)'}
-                </h4>
+                <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                        {aiAnalysis ? <Bot className="text-purple-600" size={20} /> : <span>💡</span>}
+                        {aiAnalysis ? 'AI 기반 필승 전략 분석' : '필승 전략 제안 (SO 전략)'}
+                    </h4>
+
+                    {/* Buttons removed as they are now global in StrategyPage */}
+                </div>
 
                 {loading && (
-                    <div className="flex items-center justify-center py-8 text-purple-600">
-                        <Loader2 className="animate-spin mr-2" size={20} />
-                        AI가 전략을 분석하고 있습니다...
+                    <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-xl border border-gray-100">
+                        <Loader2 className="animate-spin text-purple-600 mb-3" size={32} />
+                        <p className="text-purple-600 font-medium">AI가 전략을 분석하고 있습니다...</p>
+                        <p className="text-gray-400 text-xs mt-1">잠시만 기다려주세요 (약 5-10초 소요)</p>
                     </div>
                 )}
 
                 {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm mb-4">
                         AI 분석 중 오류가 발생했습니다: {error}
                     </div>
                 )}
 
-                {!loading && !error && (
+                {!loading && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(() => {
                             // 1. Prepare Default (Rule-based) Data
@@ -152,7 +151,7 @@ const SwotAnalysis = ({ ourAnalysis, competitors, apiKey }) => {
                             // 2. Parse AI Data (if available)
                             let sections = [...defaultSections]; // Start with defaults
 
-                            if (apiKey && aiAnalysis) {
+                            if (aiAnalysis) {
                                 const aiSections = [];
                                 const sectionPattern = /###?\s*[📌🎯🛡✨]\s*\*\*(.+?)\*\*\s*([\s\S]+?)(?=###?\s*[📌🎯🛡✨]|$)/g;
                                 let match;

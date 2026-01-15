@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Crosshair, Flag, Bot, Loader2 } from 'lucide-react';
 import { generateStpStrategy } from '../../lib/aiService';
 
-const StpStrategy = ({ studentInfo, parentsType, targetAudience, ourAnalysis, competitors, apiKey }) => {
+const StpStrategy = ({ studentInfo, parentsType, targetAudience, ourAnalysis, competitors, aiTrigger }) => {
     if (!studentInfo) return null;
 
     // AI State
@@ -37,10 +37,10 @@ const StpStrategy = ({ studentInfo, parentsType, targetAudience, ourAnalysis, co
 
     // AI Effect
     useEffect(() => {
-        if (apiKey && studentInfo) {
+        if (aiTrigger > 0 && studentInfo) {
             setLoading(true);
             setError(null);
-            generateStpStrategy(apiKey, ourAnalysis, competitors, studentInfo, parentsType, targetAudience)
+            generateStpStrategy(null, ourAnalysis, competitors, studentInfo, parentsType, targetAudience)
                 .then(text => setAiAnalysis(text))
                 .catch(err => {
                     console.error("STP AI Error:", err);
@@ -48,11 +48,12 @@ const StpStrategy = ({ studentInfo, parentsType, targetAudience, ourAnalysis, co
                 })
                 .finally(() => setLoading(false));
         }
-    }, [apiKey, studentInfo, parentsType, targetAudience, ourAnalysis, competitors]);
+    }, [aiTrigger, studentInfo, parentsType, targetAudience, ourAnalysis, competitors]);
 
     // Render Helper
     const renderContent = (type, defaultContent) => {
-        if (!apiKey) return defaultContent; // No AI mode
+        // Updated condition: no longer check apiKey, use aiAnalysis existence or loading state
+        if (!aiAnalysis && !loading && !error) return defaultContent;
         if (loading) return (
             <div className="flex items-center text-purple-600 text-sm animate-pulse">
                 <Loader2 size={16} className="animate-spin mr-2" />
@@ -92,8 +93,8 @@ const StpStrategy = ({ studentInfo, parentsType, targetAudience, ourAnalysis, co
             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <Flag className="text-purple-600" />
                 STP 전략 (타겟팅 & 포지셔닝)
-                {apiKey && !error && <span className="ml-auto flex items-center gap-1 text-sm font-normal text-purple-600 bg-purple-50 px-3 py-1 rounded-full"><Bot size={16} /> AI Enhanced</span>}
-                {apiKey && error && <span className="ml-auto flex items-center gap-1 text-sm font-normal text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-xs">⚠️ AI Limit</span>}
+                {aiAnalysis && !error && <span className="ml-auto flex items-center gap-1 text-sm font-normal text-purple-600 bg-purple-50 px-3 py-1 rounded-full"><Bot size={16} /> AI Enhanced</span>}
+                {error && <span className="ml-auto flex items-center gap-1 text-sm font-normal text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-xs">⚠️ AI Limit</span>}
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -199,8 +199,13 @@ const StrategyPage = () => {
     const [saving, setSaving] = useState(false);
 
     // AI Integration States
-    const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key'));
+    // apiKey is now managed internally in aiService, but we keep this state if needed for legacy compatibility or removal
+    const [apiKey] = useState("hardcoded");
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+    // Global AI Trigger
+    const [aiTrigger, setAiTrigger] = useState(0);
+
     const [aiMarketingData, setAiMarketingData] = useState(null);
     const [aiMarketingLoading, setAiMarketingLoading] = useState(false);
     const [aiBudgetFeedback, setAiBudgetFeedback] = useState(null);
@@ -281,17 +286,23 @@ const StrategyPage = () => {
     }, [data, apiKey]);
 
     // AI Analysis Functions
+    const handleGlobalAiAnalysis = async () => {
+        // Increment trigger to notify child components
+        setAiTrigger(prev => prev + 1);
+
+        // Run Page-Level Analysis
+        runAiMarketingAnalysis();
+        runAiBudgetAnalysis();
+        runAiTotalReview();
+    };
+
     const runAiMarketingAnalysis = async () => {
-        if (!apiKey) {
-            alert('AI 기능을 사용하려면 먼저 Gemini API 키를 설정해주세요.');
-            setIsSettingsOpen(true);
-            return;
-        }
         setAiMarketingLoading(true);
         try {
             const location = data?.environment_analysis?.location || '지역정보 없음';
             const parentsType = data?.environment_analysis?.parentsType || '학부모 유형 정보 없음';
-            const result = await generateMarketingStrategy(apiKey, currentMonth, location, parentsType);
+            // apiKey arg is ignored in favor of internal key
+            const result = await generateMarketingStrategy(null, currentMonth, location, parentsType);
             setAiMarketingData(result);
         } catch (err) {
             console.error('AI Marketing Error:', err);
@@ -302,12 +313,7 @@ const StrategyPage = () => {
     };
 
     const runAiBudgetAnalysis = async () => {
-        if (!apiKey) {
-            alert('AI 기능을 사용하려면 먼저 Gemini API 키를 설정해주세요.');
-            setIsSettingsOpen(true);
-            return;
-        }
-        setAiBudgetLoading(true);
+        setAiBudgetLoading(true); // Remove apiKey check
         try {
             const budgetData = {
                 flyerCount: simCalcs.flyerCount,
@@ -317,7 +323,7 @@ const StrategyPage = () => {
                 giftCount: simCalcs.giftCount,
                 tuitionFee: simCalcs.tuitionFee
             };
-            const result = await generateBudgetFeedback(apiKey, budgetData, {});
+            const result = await generateBudgetFeedback(null, budgetData, {});
             setAiBudgetFeedback(result);
         } catch (err) {
             console.error('AI Budget Error:', err);
@@ -328,15 +334,19 @@ const StrategyPage = () => {
     };
 
     const runAiTotalReview = async () => {
-        if (!apiKey) return;
+        // Removed apiKey check
         setAiTotalLoading(true);
         try {
             const { student_info, instructor_info, tuition_info, competitors, our_analysis, environment_analysis, facility_info } = data;
             const totalStudents = student_info.total || ((student_info.kinder || 0) + (student_info.elem_low || 0) + (student_info.elem_high || 0) + (student_info.middle || 0));
             const rooms = facility_info?.classrooms || 0;
             const capacityPerRoom = facility_info?.maxCapacityPerRoom || 10;
-            const totalCapacity = rooms * capacityPerRoom;
-            const utilizationRate = totalCapacity > 0 ? (totalStudents / totalCapacity) * 100 : 0;
+            const dailyClassCount = facility_info?.dailyClassCount || 6; // Default to 6 if missing
+
+            const totalCapacityPerTime = rooms * capacityPerRoom;
+            const totalDailyCapacity = totalCapacityPerTime * dailyClassCount;
+
+            const utilizationRate = totalDailyCapacity > 0 ? (totalStudents / totalDailyCapacity) * 100 : 0;
             const instructors = instructor_info?.total || 1;
             const ratio = totalStudents / instructors;
             const myFee = parseInt(String(tuition_info?.elementary || 0).replace(/[^0-9]/g, '')) || 0;
@@ -353,7 +363,7 @@ const StrategyPage = () => {
                 competitorName: competitors?.[0]?.name || '경쟁 학원',
                 competitorStrength: competitors?.[0]?.strength || '강점 정보 없음'
             };
-            const result = await generateTotalReview(apiKey, metrics, narrativeContext);
+            const result = await generateTotalReview(null, metrics, narrativeContext);
             setAiTotalReview(result);
         } catch (err) {
             console.error('AI Total Review Error:', err);
@@ -495,11 +505,11 @@ const StrategyPage = () => {
                     <p className="text-gray-500 mt-1">#{data.environment_analysis.location} #{data.environment_analysis.parentsType} 맞춤 전략</p>
                 </div>
                 <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+                    onClick={handleGlobalAiAnalysis}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:-translate-y-0.5 transition-all font-bold"
                 >
-                    <Settings size={18} />
-                    {apiKey ? 'AI 설정 변경' : 'AI 기능 활성화'}
+                    <Sparkles size={20} />
+                    AI 심화 분석 적용하기
                 </button>
             </div>
 
@@ -527,14 +537,18 @@ const StrategyPage = () => {
                         ourAnalysis={data.our_analysis}
                         tuitionInfo={data.tuition_info}
                     />
-                    <SwotAnalysis ourAnalysis={data.our_analysis} competitors={data.competitors} apiKey={apiKey} />
+                    <SwotAnalysis
+                        ourAnalysis={data.our_analysis}
+                        competitors={data.competitors}
+                        aiTrigger={aiTrigger}
+                    />
                     <StpStrategy
                         studentInfo={data.student_info}
                         parentsType={data.environment_analysis?.parentsType}
                         targetAudience={data.environment_analysis?.target_student}
                         ourAnalysis={data.our_analysis}
                         competitors={data.competitors}
-                        apiKey={apiKey}
+                        aiTrigger={aiTrigger}
                     />
                     <MixStrategy
                         facilityInfo={data.facility_info}

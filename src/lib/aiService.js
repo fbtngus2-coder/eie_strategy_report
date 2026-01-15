@@ -1,17 +1,45 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const getGenAI = (apiKey) => {
-    if (!apiKey) throw new Error("API Key is missing");
-    return new GoogleGenerativeAI(apiKey);
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+
+const callOpenAI = async (messages, model = "gpt-4o") => {
+    try {
+        if (!OPENAI_API_KEY) {
+            throw new Error("OpenAI API Key is missing. Please check .env file.");
+        }
+
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: messages,
+                temperature: 0.7,
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`OpenAI API Error: ${errorData.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error("AI Service Error:", error);
+        throw error;
+    }
 };
 
-export const testApiKey = async (apiKey) => {
+export const testApiKey = async () => {
     try {
-        const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const result = await model.generateContent("Hello, are you working?");
-        const response = await result.response;
-        return response.text().length > 0;
+        // Simple test to check if the key works
+        const result = await callOpenAI([
+            { role: "user", content: "Hello, are you working?" }
+        ]);
+        return result && result.length > 0;
     } catch (error) {
         console.error("API Key Validation Error:", error);
         return false;
@@ -19,214 +47,184 @@ export const testApiKey = async (apiKey) => {
 };
 
 export const generateSwotAnalysis = async (apiKey, ourAnalysis, competitors) => {
-    try {
-        const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const prompt = `
+    Role: You are a top-tier educational management consultant famous for turning around local academies in Korea.
+    Task: Analyze the client's academy and competitors to provide a "Winning Strategy".
 
-        const prompt = `
-        Role: You are an expert educational consultant for private academies (Hagwon) in Korea.
-        Task: Analyze the following SWOT data for a client's English academy and provide a strategic summary.
-        
-        [Client Academy Info]
-        Strength: ${ourAnalysis?.strength || 'Not specified'}
-        Weakness: ${ourAnalysis?.weakness || 'Not specified'}
+    [Client Academy Info]
+    - Strengths: ${ourAnalysis?.strength || 'Not specified'}
+    - Weaknesses: ${ourAnalysis?.weakness || 'Not specified'}
 
-        [Competitor Info]
-        ${competitors?.map(c => `- Name: ${c.name}, Strength: ${c.strength}, Weakness: ${c.weakness}`).join('\n') || 'None'}
+    [Competitors]
+    ${competitors?.map(c => `- ${c.name}: Strength(${c.strength}), Weakness(${c.weakness})`).join('\n') || 'None'}
 
-        Output Requirements:
-        - Format: Markdown (use headers and bullet points)
-        - Tone: Professional, encouraging, and strategic.
-        - Language: Korean (Polite, '하십시오' style).
-        - Length: CONCISE - Maximum 4-5 bullet points per section
-        - Structure:
-          1. 📌 **핵심 승부수 (SO 전략)**: 2-3 bullet points
-          2. 🎯 **기회 포착**: 2-3 bullet points with CONCRETE actions  
-          3. 🛡 **위협 대응**: 2 bullet points
-          4. ✨ **최종 제언**: 1-2 sentences only
-        
-        CRITICAL: 
-        - Keep each bullet point to ONE sentence maximum
-        - Focus on ACTIONABLE advice, not explanations
-        - Use specific examples (e.g., "Host a seminar on [Topic]" not "improve marketing")
-        `;
+    Output Requirements:
+    - Tone: Sharp, Insightful, and Action-Oriented (Professional Consultant).
+    - Language: Korean (Formal '하십시오' style).
+    - Format: Markdown with specific headers.
 
-        const result = await model.generateContent(prompt);
-        return result.response.text();
-    } catch (error) {
-        console.error("SWOT Generation Error:", error);
-        throw error;
-    }
+    Structure & Content Rules (EXTREMELY IMPORTANT):
+    1. 📌 **핵심 승부수 (SO 전략)**
+       - Do NOT say "Use your strengths". 
+       - DO say: "Launch a '[Specific Program Name]' targeting [Specific Gap] to dominance over [Competitor Name]."
+       - Provide 2 detailed actionable strategies.
+    
+    2. 🎯 **기회 포착 & 틈새 공략**
+       - Analyze the competitor's weakness deeply.
+       - Suggest a "Counter-Attack Marketing Message" or specific curriculum adjustment.
+       - Provide 2 detailed points.
+
+    3. 🛡 **위협 대응 & 리스크 관리**
+       - How to defend against competitors' strengths?
+       - Suggest a specific "Counseling Script" point to use when parents compare you with them.
+    
+    4. ✨ **원장님을 위한 한마디**
+       - 1 sentence of powerful encouragement based on the analysis.
+
+    CRITICAL: Avoid abstract advice like "reinforce marketing" or "improve quality". Be specific: "Create a 3-minute YouTube video about..."
+    `;
+
+    return await callOpenAI([
+        { role: "system", content: "You are a sharp, no-nonsense business consultant." },
+        { role: "user", content: prompt }
+    ]);
 };
 
 export const generateMarketingStrategy = async (apiKey, month, location, parentsType) => {
-    try {
-        const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const prompt = `
+    Role: Expert Marketing Director.
+    Task: Create a monthly marketing calendar for an English Academy.
+    Context: Month: ${month}월 / Location: ${location} / Parent Type: ${parentsType}
+    
+    Output Requirements:
+    - Format: JSON Array ONLY.
+    - Length: Exactly 3 items.
+    - Language: Korean.
 
-        const prompt = `
-        Role: Senior Marketing Director for English Education.
-        Task: Suggest 3 specific marketing actions for the month of ${month}월.
-        Context:
-        - Location: ${location} (Consider local characteristics if known, generic if not)
-        - Target Parents: ${parentsType} (Educational zeal, income level, concerns)
+    Constraint:
+    - ABSOLUTELY NO generic output like "Online Marketing" or "School Campaign".
+    - BE SPECIFIC: 
+       - blog_title: "Must be a catchy click-bait title" (e.g., "Moms in Dongtan are shocked by this...")
+       - offline_action: "Specific item & location" (e.g., "Distribute 'Luminous Fans' at [School Name] main gate")
 
-        Output Requirements:
-        - Format: JSON Array only (no markdown, no backticks)
-        - Length: Exactly 3 items, one per type
-        - Each item structure: {"type": "설명회|학교앞|아파트", "title": "...", "desc": "..."}
-        - Title: Maximum 15 characters
-        - Description: Maximum 40 characters (use concrete action verbs)
-        - Language: Korean
-        
-        Example:
-        [{"type": "설명회", "title": "신학기 학습법 특강", "desc": "3월 1주차, 학부모 30명 대상 오프라인 진행"},
-         {"type": "학교앞", "title": "환영 선물 배포", "desc": "개학일 아침 7:30-8:30, 알림장 500부"},
-         {"type": "아파트", "title": "게시판 광고 집행", "desc": "타겟 아파트 5곳, 2주간 노출"}]
-        
-        ONLY return valid JSON array, nothing else.
-        `;
+    JSON Structure:
+    [
+      {"type": "블로그/맘카페", "title": "[Specific Catchy Title]", "desc": "[Specific Content to write about]"},
+      {"type": "오프라인/현장", "title": "[Specific Event Name]", "desc": "[Action Item & Location]"},
+      {"type": "원내/재원생", "title": "[Specific Event Name]", "desc": "[Action for current students]"}
+    ]
+    `;
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        // Simple cleanup to ensure JSON parsing if AI adds backticks
-        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(jsonStr);
-    } catch (error) {
-        console.error("Marketing Generation Error:", error);
-        // Fallback or rethrow
-        throw error;
-    }
+    const text = await callOpenAI([
+        { role: "system", content: "You are a creative marketing genius. Return only JSON." },
+        { role: "user", content: prompt }
+    ]);
+
+    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(jsonStr);
 };
 
 export const generateBudgetFeedback = async (apiKey, budgetData, financialGoals) => {
-    try {
-        const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const prompt = `
+    Role: Financial Advisor for Small Businesses.
+    Task: Review the monthly marketing budget allocation and predict ROI.
+    
+    [Budget Plan]
+    - Flyers: ${budgetData.flyerCount} sheets
+    - Manpower: ${budgetData.manpowerCount} people * ${budgetData.manpowerHours} hours
+    - Apartment Board: ${budgetData.aptBoardCost} KRW
+    - Gifts: ${budgetData.giftCount} units
+    - Tuition Fee: ${budgetData.tuitionFee} KRW
+    
+    Output Requirements:
+    - Format: Markdown (Concise).
+    - Tone: Professional, Analytical.
+    - Language: Korean.
+    
+    Content:
+       1. One sentence summary of the budget balance (Is it too heavy on offline?).
+       2. One ROI prediction (e.g., "예상 신규 유입 X명")
+       3. One actionable tip (e.g., "Y 항목을 Z원으로 조정 권장")
+    `;
 
-        const prompt = `
-        Role: Financial Advisor for Small Businesses.
-        Task: Review the monthly marketing budget allocation and predict ROI.
-        
-        [Budget Data]
-        - Flyers: ${budgetData.flyerCount} sheets
-        - Manpower: ${budgetData.manpowerCount} people, ${budgetData.manpowerHours} hours
-        - Apartment Board: ${budgetData.aptBoardCost} KRW
-        - Gifts/Snacks: ${budgetData.giftCount} units
-        - Tuition Fee: ${budgetData.tuitionFee} KRW
-        
-        Output Requirements:
-        - Format: Plain text paragraphs (no headers)
-        - Length: Maximum 150 characters total
-        - Language: Korean
-        - Content: 2-3 sentences with specific numbers and recommendations
-        - Focus on:
-           1. One efficiency comment (e.g., "전단지 수량 적정/과다")
-           2. One ROI prediction (e.g., "예상 신규 유입 X명")
-           3. One actionable tip (e.g., "Y 항목을 Z원으로 조정 권장")
-        `;
-
-        const result = await model.generateContent(prompt);
-        return result.response.text();
-    } catch (error) {
-        console.error("Budget Feedback Error:", error);
-        throw error;
-    }
+    return await callOpenAI([
+        { role: "system", content: "You are a helpful financial assistant." },
+        { role: "user", content: prompt }
+    ]);
 };
 
 export const generateTotalReview = async (apiKey, metrics, narrativeContext) => {
-    try {
-        const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const prompt = `
+    Role: Senior Strategic Consultant (McKinsey/Bain style) for Education Business.
+    Task: Synthesize all metrics and context to provide a "Killer Executive Summary".
+    
+    [Quantitative Analysis]
+    - Utilization Rate: ${metrics.utilizationRate}% (Standard: 80~120%)
+    - Instructor Efficiency: ${metrics.ratio} students per teacher (Standard: 10~15)
+    - Price Positioning: ${metrics.priceStat}
+    
+    [Qualitative Context]
+    - Target: ${narrativeContext.target}
+    - Major Competitor: ${narrativeContext.competitorName} (Strength: ${narrativeContext.competitorStrength})
+    - My Core Strength: ${narrativeContext.myStrength}
+    
+    Output Requirements:
+    - Tone: Critical, Analytical, and Prescriptive. 
+    - **Do NOT just repeat the numbers.** Explain what they MEAN together.
+    
+    Structure & Logic:
+    
+    1. **📊 경영 효율성 정밀 진단 (Synthesis)**
+       - IF Utilization > 150%: "Explosive demand detected. IMMEDIATELY raise tuition by 10-15% or expand space. You are currently losing money by being too cheap."
+       - IF Utilization < 60%: "Critical warning. Vacancy is high. Stop recruiting teachers and focus on 'Filling the class' via marketing."
+       - Connect 'Instructor Efficiency' to 'Profitability'.
+    
+    2. **⚡ 경쟁 우위 확보 전략 (Winning Move)**
+       - Compare [My Strength] vs [Competitor Strength].
+       - If Competitor is "Native Speaker" and We are "Grammar", say: "Don't fight on Speaking. Position as 'The Academy that actually fixes Grades'. Attack their lack of test results."
+    
+    3. **✅ 이번 달 3대 우선순위 (Priorities)**
+       - Provide 3 extremely specific tasks based on the diagnosis above. (e.g., "Raise fee to 380,000 KRW", "Fire bottom 10% students", "Hire 1 Admin", etc.)
+    `;
 
-        const prompt = `
-        Role: Chief Strategy Officer.
-        Task: Write a comprehensive executive summary for the academy owner.
-        
-        [Metrics]
-        - Utilization Rate: ${metrics.utilizationRate}%
-        - Instructor Load: ${metrics.ratio} students/teacher
-        - Price Position: ${metrics.priceStat}
-        
-        [Context]
-        - Target: ${narrativeContext.target}
-        - Competitor: ${narrativeContext.competitorName} (Strength: ${narrativeContext.competitorStrength})
-        
-        Output Requirements:
-        - Format: Markdown (use ONE header and bullet points)
-        - Length: Maximum 5 bullet points total
-        - Tone: Highly professional, direct, "Executive Summary" style
-        - Language: Korean
-        - Brand Name: Use "EiE 고려대학교 영어교육 프로그램"
-        - Structure:
-          **전략 요약 (3-5 bullet points)**
-          - 현재 상태 진단: 1 sentence
-          - 경쟁 대응: 1 sentence with specific competitor name
-          - 즉시 실행 과제: 1-2 concrete actions (e.g., "3월 1주 설명회 개최", "월 예산 15% 증액")
-        
-        Keep it under 200 characters total.
-        `;
-
-        const result = await model.generateContent(prompt);
-        return result.response.text();
-    } catch (error) {
-        console.error("Total Review Error:", error);
-        throw error;
-    }
+    return await callOpenAI([
+        { role: "system", content: "You are a cold, calculated business strategist." },
+        { role: "user", content: prompt }
+    ]);
 };
 
 export const generateStpStrategy = async (apiKey, ourAnalysis, competitors, studentInfo, parentsType, targetAudience) => {
-    try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const prompt = `
+    Role: Brand Identity Architect.
+    Task: Construct a coherent STP narrative. Do NOT just list S-T-P. They must link logically.
 
-        const prompt = `
-        Act as a Branding & Strategy Consultant for an English Academy in Korea from the perspective of "EiE 고려대학교 영어교육 프로그램".
-        
-        [Academy Context]
-        - My Strengths: ${JSON.stringify(ourAnalysis?.strength || [])}
-        - My Weaknesses: ${JSON.stringify(ourAnalysis?.weakness || [])}
-        - Current Students: ${JSON.stringify(studentInfo)}
-        - Target Audience: ${targetAudience || 'General'}
-        - Parents Type: ${parentsType || 'General'}
-        
-        [Market Context]
-        - Competitors: ${JSON.stringify(competitors?.map(c => c.name) || [])}
-        
-        Task: Create a sharp, high-impact STP Strategy.
-        
-        Output Requirements:
-        - Language: Korean (Professional, Persuasive)
-        - Format: 3 Distinct Sections with headers.
-        
-        1. [SEGMENTATION] (세분화)
-           - Identify the most profitable and strategically important segment based on current students and strengths.
-           - Explain WHY this segment is the "Blue Ocean" or "Core Growth Engine".
-           - Length: 2-3 sentences.
-        
-        2. [TARGETING] (타겟 선정)
-           - Define the specific Persona of the target parent/student (e.g., "Grades-obsessed partial to management", "Young parents valuing speaking").
-           - Propose a specific marketing approach for them (e.g., "Seminars", "WOM", "Online Ads").
-           - Length: 2-3 sentences.
-        
-        3. [POSITIONING] (포지셔닝)
-           - Create a ONE-LINE Powerful Slogan/Identity.
-           - Explain the core differentiator that supports this positioning.
-           - Length: Slogan + 1 sentence explanation.
-           
-        Please use the following markers for easy parsing:
-        ### SEGMENTATION
-        ...content...
-        ### TARGETING
-        ...content...
-        ### POSITIONING
-        ...content...
-        `;
+    [Inputs]
+    - My Strength: ${JSON.stringify(ourAnalysis?.strength)}
+    - My Weakness: ${JSON.stringify(ourAnalysis?.weakness)}
+    - Competitors: ${JSON.stringify(competitors?.map(c => c.name))}
+    - Competitor Weaknesses: ${JSON.stringify(competitors?.map(c => c.weakness))}
+    - User's Desired Target: ${targetAudience}
 
-        const result = await model.generateContent(prompt);
-        return result.response.text();
-    } catch (error) {
-        console.error("STP AI Error:", error);
-        throw error;
-    }
+    Output Requirements (Korean):
+    
+    ### 1. SEGMENTATION & GAP ANALYSIS (시장의 틈새)
+    - **Logic**: Look at [Competitor Weakness]. Where are they failing?
+    - **Output**: "The market is currently underserved in [Specific Area] because [Competitor] is failing to provide [Service]. This is our entry point."
+
+    ### 2. TARGETING RE-VALIDATION (타겟 재정의)
+    - **Critical Check**: Does [User's Desired Target] actually match [My Strength]?
+    - **Output**: 
+      - If unique match: "Your choice of [Target] is perfect because you have [Strength]."
+      - If mismatch: "Warning: You chose [Target], but your strength is [Strength]. I recommend pivoting to [Better Target] for higher ROI."
+      - Define the Persona vividly (e.g., "Anxious moms in their 40s who gave up on 'Fun English'").
+
+    ### 3. POSITIONING STATEMENT (차별화 선언)
+    - **Formula**: "To [Target], [Academy Name] is the [Category] that provides [Benefit] unlike [Competitor]."
+    - Create a powerful Brand Slogan based on this formula.
+    `;
+
+    return await callOpenAI([
+        { role: "system", content: "You are a brand architect who creates cult brands." },
+        { role: "user", content: prompt }
+    ]);
 };

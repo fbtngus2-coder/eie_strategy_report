@@ -136,7 +136,7 @@ const Layout = () => {
                 </header>
 
                 {/* Content Wrapper */}
-                <div className="flex-1 overflow-auto p-4 md:p-6 scrollbar-hide">
+                <div id="scroll-container" className="flex-1 overflow-auto p-4 md:p-6 scrollbar-hide">
                     <div className="max-w-7xl mx-auto animate-fadeIn">
                         <Outlet />
                     </div>

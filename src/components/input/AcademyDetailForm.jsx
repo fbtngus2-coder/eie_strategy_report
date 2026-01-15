@@ -59,6 +59,18 @@ const AcademyDetailForm = ({ data, updateData }) => {
                         />
                     </div>
                     <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">하루 총 수업 타임 수 (교시)</label>
+                        <input
+                            type="number"
+                            min="1" max="12"
+                            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                            placeholder="예: 6"
+                            value={data.facility_info.dailyClassCount || ''}
+                            onChange={(e) => handleChange('facility_info', 'dailyClassCount', parseInt(e.target.value) || 6)}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">예: 2시, 3시 ... 7시 수업 = 6타임</p>
+                    </div>
+                    <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">강사 수 (명)</label>
                         <input
                             type="number"

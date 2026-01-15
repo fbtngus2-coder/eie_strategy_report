@@ -9,11 +9,21 @@ const InputPage = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
+    useEffect(() => {
+        const scrollContainer = document.getElementById('scroll-container');
+        if (scrollContainer) {
+            scrollContainer.scrollTo(0, 0);
+        } else {
+            window.scrollTo(0, 0);
+        }
+    }, [step]);
+
+
     // Initial Empty State
     const [formData, setFormData] = useState({
         // V2 Fields
         operation_info: { isDirectorTeaching: false, hasCounselor: false, hasAdmin: false, useAnnualLeave: false, useInsurance: false },
-        facility_info: { classrooms: 0, hasLab: false, shuttles: 0, hasHelper: false, nativeTeacher: false, maxCapacityPerRoom: 0 },
+        facility_info: { classrooms: 0, hasLab: false, shuttles: 0, hasHelper: false, nativeTeacher: false, maxCapacityPerRoom: 0, dailyClassCount: 6 },
         instructor_info: { total: 0 },
         student_info: { kinder: 0, elem_low: 0, elem_high: 0, middle: 0, high: 0 },
         tuition_info: { phonics: 0, elementary: 0, middle: 0, high: 0, isSeparateFee: false },
@@ -68,51 +78,143 @@ const InputPage = () => {
         return (s.kinder || 0) + (s.elem_low || 0) + (s.elem_high || 0) + (s.middle || 0) + (s.high || 0);
     };
 
-    // --- AUTO FILL LOGIC ---
-    const handleAutoFill = () => {
-        if (step === 1) {
-            const targets = ['초등 저학년', '초등 고학년'];
-            const locations = ['2000세대 아파트 단지 상가 2층', '초등학교 정문 맞은편 법조타운', '주거밀집지역 메인 사거리', '신도시 중심상가 학원가'];
-            const parentTypes = ['입시 중심', '보육/관리', '영어 흥미/스피킹'];
+    // --- AUTO FILL LOGIC (SCENARIO BASED) ---
+    const SCENARIOS = [
+        {
+            name: "🔥 치열한 학군지 (대치/목동 스타일)",
+            targets: ['초등 고학년', '중등부'],
+            environment: {
+                location: "대단지 아파트 정문 건너편 메인 상가 3층 (학원 밀집 지역)",
+                parentsType: "입시 중심",
+            },
+            competitors: [
+                {
+                    name: '최상위 S어학원',
+                    fee: '450000',
+                    strength: '전국 100호점 이상의 대형 프랜차이즈 브랜드 파워를 보유하고 있으며, 7단계의 세분화된 레벨링 시스템과 100% 원어민 회화 수업을 강점으로 내세움',
+                    weakness: '학생 수가 너무 많아 개별 케어가 전혀 이루어지지 않으며, 숙제 검사나 단어 시험 결과에 대한 학부모 피드백이 매우 늦어 불만이 누적됨',
+                    marketing: '지역 맘카페 바이럴 마케팅 및 아파트 엘리베이터 영상 광고'
+                },
+                {
+                    name: '하이엔드 영어',
+                    fee: '520000',
+                    strength: '철저한 내신 관리와 특목고 진학 실적(작년 과학고 3명 배출)을 적극 홍보하며, 상위권 학생 대상의 심화 문법/독해 수업이 강력함',
+                    weakness: '수강료가 지역 평균 대비 20만원 이상 비싸고, 숙제 양이 과도하게 많아 중하위권 학생들이 적응하지 못하고 중도 포기하는 비율이 높음',
+                    marketing: '대형 입시 설명회 개최 및 재원생 지인 소개 이벤트'
+                }
+            ],
+            myAcademy: {
+                operation_info: { isDirectorTeaching: true, hasCounselor: true, hasAdmin: true, useAnnualLeave: true, useInsurance: true },
+                facility_info: { classrooms: 8, hasLab: true, shuttles: 0, hasHelper: false, nativeTeacher: false, maxCapacityPerRoom: 10, dailyClassCount: 7 },
+                instructor_info: { total: 5 },
+                student_info: { kinder: 0, elem_low: 10, elem_high: 60, middle: 80, high: 20 },
+                tuition_info: { phonics: 0, elementary: 350000, middle: 420000, high: 500000, isSeparateFee: true },
+                strength: "원장 직강의 '담임제 풀케어' 시스템으로 대형 학원이 놓치는 꼼꼼한 관리와 1:1 학습 피드백 제공",
+                weakness: "대형 브랜드 대비 인지도가 부족하고 차량 운행을 하지 않아 원거리 학생 등원이 힘듦",
+                fee: ''
+            }
+        },
+        {
+            name: "🏢 신도시/택지지구 (동탄/광교 스타일)",
+            targets: ['유치부', '초등 저학년'],
+            environment: {
+                location: "초등학교 정문 맞은편 단독 상가 2층 (도보 통학 용이)",
+                parentsType: "보육/관리",
+            },
+            competitors: [
+                {
+                    name: '펀펀 잉글리시',
+                    fee: '280000',
+                    strength: '넓은 체육관과 요리 실습실을 갖추고 있어, 영어를 놀이와 액티비티로 접근하여 저학년 아이들이 거부감 없이 즐겁게 다닐 수 있음',
+                    weakness: '흥미 위주의 수업으로 인해 학습 아웃풋(파닉스 완성, 문장 발화)이 부족하고, 초등 3학년 이상이 되면 학습식 학원으로 이동하는 현상이 발생함',
+                    marketing: '학교 앞 문구점 제휴 및 등하교 시간 판촉물 배포'
+                },
+                {
+                    name: '튼튼 공부방',
+                    fee: '200000',
+                    strength: '아파트 단지 내 가정집에서 운영하여 이동 동선이 매우 안전하고, 시간 조율이 유연하여 맞벌이 학부모의 선호도가 높음',
+                    weakness: '비전문적인 강사(아르바이트 대학생) 채용이 잦고, 교육 시설이 협소하며 체계적인 커리큘럼이 없어 고학년으로 갈수록 한계가 명확함',
+                    marketing: '아파트 단지 게시판 전단지 직투'
+                }
+            ],
+            myAcademy: {
+                operation_info: { isDirectorTeaching: true, hasCounselor: false, hasAdmin: true, useAnnualLeave: true, useInsurance: true },
+                facility_info: { classrooms: 6, hasLab: true, shuttles: 1, hasHelper: true, nativeTeacher: false, maxCapacityPerRoom: 8, dailyClassCount: 6 },
+                instructor_info: { total: 3 },
+                student_info: { kinder: 20, elem_low: 60, elem_high: 30, middle: 10, high: 0 },
+                tuition_info: { phonics: 280000, elementary: 300000, middle: 350000, high: 0, isSeparateFee: true },
+                strength: "매일 학습 결과를 학부모에게 카톡으로 전송하는 '데일리 리포트'와 안전한 등하원 차량 운행",
+                weakness: "초등 고학년으로 올라갈수록 입시 전문 학원으로 이탈하는 경향이 있음",
+                fee: ''
+            }
+        },
+        {
+            name: "🏠 일반 주거 지역 (가성비 중심)",
+            targets: ['초등 저학년', '초등 고학년'],
+            environment: {
+                location: "구축 아파트 단지 내 상가 2층 (주변에 교습소 많음)",
+                parentsType: "가성비",
+            },
+            competitors: [
+                {
+                    name: '스마트 해법영어',
+                    fee: '220000',
+                    strength: '매일 50분씩 주 5회 수업을 제공하면서도 수강료가 매우 저렴하며, 태블릿 PC를 활용한 자기주도 학습 시스템이 잘 갖춰져 있음',
+                    weakness: '원장 1인이 수업과 상담, 차량 운행까지 모두 담당하여 관리가 매우 허술하고, 강사 전문성이 부족하여 심화 학습이 불가능함',
+                    marketing: '아파트 입구 게시판 및 상가 1층 배너 광고'
+                },
+                {
+                    name: '제임스 영어교습소',
+                    fee: '250000',
+                    strength: '최대 4명의 소수 정예 그룹 과외식 수업을 진행하여 꼼꼼한 문법 지도와 개별 첨삭 지도가 가능함',
+                    weakness: '상가 건물이 매우 노후되어 화장실 등 시설 환경이 열악하고, 온라인 학습 프로그램이나 체계적인 레벨 테스트 시스템이 전무함',
+                    marketing: '지역 생활정보지 및 아파트 외벽 현수막 광고'
+                }
+            ],
+            myAcademy: {
+                operation_info: { isDirectorTeaching: true, hasCounselor: false, hasAdmin: false, useAnnualLeave: false, useInsurance: true },
+                facility_info: { classrooms: 4, hasLab: true, shuttles: 0, hasHelper: false, nativeTeacher: false, maxCapacityPerRoom: 6, dailyClassCount: 5 },
+                instructor_info: { total: 2 },
+                student_info: { kinder: 0, elem_low: 40, elem_high: 40, middle: 20, high: 0 },
+                tuition_info: { phonics: 240000, elementary: 260000, middle: 300000, high: 0, isSeparateFee: false },
+                strength: "합리적인 수강료로 매일 50분씩, 파닉스부터 문법까지 확실하게 잡아주는 '가성비 끝판왕' 커리큘럼",
+                weakness: "차량 운행 불가 및 노후된 상가 건물로 인한 이미지 저하",
+                fee: ''
+            }
+        }
+    ];
 
+    const handleAutoFill = () => {
+        // Randomly select one scenario
+        const scenario = SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)];
+        console.log("Selected Scenario:", scenario.name);
+
+        if (step === 1) {
             setFormData(prev => ({
                 ...prev,
-                targets: targets,
+                targets: scenario.targets,
                 environment: {
                     ...prev.environment,
-                    location: locations[Math.floor(Math.random() * locations.length)],
-                    parentsType: parentTypes[Math.floor(Math.random() * parentTypes.length)]
+                    ...scenario.environment
                 }
             }));
         } else if (step === 2) {
-            const compNames = ['최상위어학원', '리더스영어', '탑클래스학원', '글로벌영수학원'];
-            const strengths = ['원어민 100% 수업', '철저한 내신 관리', '저렴한 수강료', '차량 운행 노선 많음'];
-            const weaknesses = ['강사 교체가 잦음', '시설이 노후됨', '피드백이 부족함', '숙제 양이 너무 많음'];
-
-            const randomComp = () => ({
-                name: compNames[Math.floor(Math.random() * compNames.length)],
-                fee: Math.floor(Math.random() * (40 - 25) + 25) + '0000',
-                strength: strengths[Math.floor(Math.random() * strengths.length)],
-                weakness: weaknesses[Math.floor(Math.random() * weaknesses.length)],
-                marketing: '지역 맘카페 홍보'
-            });
-
             setFormData(prev => ({
                 ...prev,
-                competitors: [randomComp(), randomComp()]
+                competitors: scenario.competitors
             }));
         } else if (step === 3) {
             setFormData(prev => ({
                 ...prev,
-                operation_info: { isDirectorTeaching: true, hasCounselor: Math.random() > 0.5, hasAdmin: true, useAnnualLeave: true, useInsurance: true },
-                facility_info: { classrooms: 5 + Math.floor(Math.random() * 5), hasLab: true, shuttles: 1 + Math.floor(Math.random() * 2), hasHelper: Math.random() > 0.5, nativeTeacher: Math.random() > 0.5, maxCapacityPerRoom: 10 },
-                instructor_info: { total: 3 + Math.floor(Math.random() * 4) },
-                student_info: { kinder: 0, elem_low: 20 + Math.floor(Math.random() * 30), elem_high: 20 + Math.floor(Math.random() * 30), middle: 10 + Math.floor(Math.random() * 20), high: 0 },
-                tuition_info: { phonics: 250000, elementary: 280000, middle: 350000, high: 0, isSeparateFee: true },
+                operation_info: scenario.myAcademy.operation_info,
+                facility_info: scenario.myAcademy.facility_info,
+                instructor_info: scenario.myAcademy.instructor_info,
+                student_info: scenario.myAcademy.student_info,
+                tuition_info: scenario.myAcademy.tuition_info,
                 myAcademy: {
                     ...prev.myAcademy,
-                    strength: '원장 직강으로 꼼꼼한 관리와 매일 학습 피드백 제공',
-                    weakness: '차량 운행 범위가 좁아 인근 아파트 학생만 수용 가능',
+                    strength: scenario.myAcademy.strength,
+                    weakness: scenario.myAcademy.weakness,
                     fee: ''
                 }
             }));

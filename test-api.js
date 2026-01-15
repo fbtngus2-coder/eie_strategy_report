@@ -1,63 +1,38 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callOpenAI } from './src/lib/aiService.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const apiKey = process.argv[2];
+const apiKey = process.env.VITE_OPENAI_API_KEY;
 
-if (!apiKey) {
-    console.error('Usage: node test-api.js YOUR_API_KEY');
-    process.exit(1);
-}
-
-const genAI = new GoogleGenerativeAI(apiKey);
-
-const modelsToTest = [
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro-latest',
-    'gemini-1.5-pro',
-    'gemini-pro',
-    'models/gemini-1.5-flash',
-    'models/gemini-1.5-pro'
-];
-
-async function testModel(modelName) {
+async function testOpenAI() {
+    console.log("Testing OpenAI API...");
     try {
-        console.log(`\nTesting: ${modelName}...`);
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent("Say hello in Korean");
-        const response = await result.response;
-        const text = response.text();
-        console.log(`✅ SUCCESS: ${modelName}`);
-        console.log(`Response: ${text.substring(0, 50)}...`);
-        return modelName;
-    } catch (error) {
-        console.log(`❌ FAILED: ${modelName}`);
-        console.log(`Error: ${error.message.substring(0, 100)}`);
-        return null;
-    }
-}
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                    { role: "user", content: "Hello, say 'OpenAI is working' if you see this." }
+                ],
+                max_tokens: 20
+            })
+        });
 
-async function main() {
-    console.log('🔍 Testing which Gemini models work with your API key...\n');
-
-    const workingModels = [];
-
-    for (const modelName of modelsToTest) {
-        const result = await testModel(modelName);
-        if (result) {
-            workingModels.push(result);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(JSON.stringify(error));
         }
-        // Small delay between requests
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
 
-    console.log('\n\n📊 RESULTS:');
-    console.log('='.repeat(50));
-    if (workingModels.length > 0) {
-        console.log('✅ Working models:');
-        workingModels.forEach(m => console.log(`  - ${m}`));
-    } else {
-        console.log('❌ No models worked. Check your API key or account status.');
+        const data = await response.json();
+        console.log("✅ Success!");
+        console.log("Response:", data.choices[0].message.content);
+    } catch (error) {
+        console.error("❌ Failed:", error.message);
     }
 }
 
-main();
+testOpenAI();
