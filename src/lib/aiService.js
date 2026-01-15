@@ -8,7 +8,7 @@ const getGenAI = (apiKey) => {
 export const testApiKey = async (apiKey) => {
     try {
         const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
         const result = await model.generateContent("Hello, are you working?");
         const response = await result.response;
         return response.text().length > 0;
@@ -21,7 +21,7 @@ export const testApiKey = async (apiKey) => {
 export const generateSwotAnalysis = async (apiKey, ourAnalysis, competitors) => {
     try {
         const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
         const prompt = `
         Role: You are an expert educational consultant for private academies (Hagwon) in Korea.
@@ -62,7 +62,7 @@ export const generateSwotAnalysis = async (apiKey, ourAnalysis, competitors) => 
 export const generateMarketingStrategy = async (apiKey, month, location, parentsType) => {
     try {
         const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
         const prompt = `
         Role: Senior Marketing Director for English Education.
@@ -102,7 +102,7 @@ export const generateMarketingStrategy = async (apiKey, month, location, parents
 export const generateBudgetFeedback = async (apiKey, budgetData, financialGoals) => {
     try {
         const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
         const prompt = `
         Role: Financial Advisor for Small Businesses.
@@ -137,7 +137,7 @@ export const generateBudgetFeedback = async (apiKey, budgetData, financialGoals)
 export const generateTotalReview = async (apiKey, metrics, narrativeContext) => {
     try {
         const genAI = getGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
         const prompt = `
         Role: Chief Strategy Officer.
@@ -178,7 +178,7 @@ export const generateTotalReview = async (apiKey, metrics, narrativeContext) => 
 export const generateStpStrategy = async (apiKey, ourAnalysis, competitors, studentInfo, parentsType, targetAudience) => {
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
         const prompt = `
         Act as a Branding & Strategy Consultant for an English Academy in Korea from the perspective of "EiE 고려대학교 영어교육 프로그램".
